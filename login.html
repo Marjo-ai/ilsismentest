@@ -15,6 +15,7 @@
             align-items: center;
             background-color: #f0f0f0;
         }
+
         .login-container {
             background: white;
             padding: 30px;
@@ -23,10 +24,13 @@
             width: 300px;
             text-align: center;
         }
+
         .login-container h2 {
             margin-bottom: 20px;
         }
-        .login-container input, .login-container button {
+
+        .login-container input,
+        .login-container button {
             width: 100%;
             padding: 10px;
             margin: 10px 0;
@@ -34,25 +38,31 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
         .login-container button {
             background: #007bff;
             color: white;
             border: none;
             cursor: pointer;
         }
+
         .login-container button:hover {
             background: #0056b3;
         }
+
         .visitor-btn {
             background: #28a745;
         }
+
         .visitor-btn:hover {
             background: #218838;
         }
+
         .editor-form {
             display: none;
             margin-top: 20px;
         }
+
         .editor-form.active {
             display: block;
         }
@@ -65,7 +75,8 @@
         <button class="visitor-btn" onclick="loginAsVisitor()">Hyr si Vizitor</button>
         <button onclick="toggleEditorForm()">Hyr si Anetar i Ekipit</button>
         <div id="editor-form" class="editor-form">
-            <input type="text" id="username" placeholder="Emri i Përdoruesit (p.sh., Ilir Shameti, Eduard Duka, Marjo Naci)">
+            <input type="text" id="username"
+                placeholder="Emri i Përdoruesit (p.sh., Ilir Shameti, Eduard Duka, Marjo Naci)">
             <input type="password" id="password" placeholder="Fjalëkalimi">
             <button onclick="loginAsEditor()">Hyr</button>
         </div>
@@ -87,7 +98,7 @@
             }
 
             try {
-                const response = await fetch('/login', {
+                const response = await fetch('https://ilsismentest-backend.onrender.com/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'editor', username, password })
@@ -114,7 +125,7 @@
 
         async function loginAsVisitor() {
             try {
-                const response = await fetch('/login', {
+                const response = await fetch('https://ilsismentest-backend.onrender.com/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'visitor' })
