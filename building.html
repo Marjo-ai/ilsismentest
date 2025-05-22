@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detajet e Pallatit</title>
+    <style>
+        /* Stilet për faqen e detajeve të pallatit */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .header {
+            margin: 20px 0;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 20px;
+            align-items: center;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            margin: 0;
+        }
+        .add-project-btn {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .add-project-btn:hover {
+            background: #0056b3;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            justify-content: flex-start;
+            margin-left: 20px;
+        }
+        .tower {
+            width: 300px;
+            height: 800px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            border: 2px solid #333;
+        }
+        .tower::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        .floor {
+            width: 100%;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            position: absolute;
+            z-index: 2;
+        }
+        .floor:hover {
+            background: rgba(200, 200, 200, 0.8);
+        }
+        .floor-label {
+            background: rgb(0, 123, 255);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .floor-plans {
+            position: relative;
+            width: 1220px; /* 600px për apartamentet + 600px për planimetrinë + 20px gap */
+            height: 600px; /* Vetëm për kutitë, pa info */
+        }
+        .floor-plan-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            visibility: hidden;
+        }
+        .floor-plan-container.active {
+            visibility: visible;
+        }
+        .floor-plan {
+            width: 600px;
+            height: 600px;
+            border: 1px solid #333;
+            background: #fff;
+            position: relative;
+        }
+        .floor-plan-image {
+            width: 600px;
+            height: 600px;
+            border: 1px solid #333;
+            background: #fff;
+        }
+        .floor-plan-image img, .floor-plan-image svg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .apartment-group {
+            cursor: pointer;
+            transition: filter 0.3s;
+        }
+        .apartment-group.available:hover {
+            filter: url(#green-tint);
+        }
+        .apartment-group.sold:hover {
+            filter: url(#red-tint);
+        }
+        .add-apartment-btn, .add-floor-plan-btn {
+            padding: 5px 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 10;
+        }
+        .add-apartment-btn:hover, .add-floor-plan-btn:hover {
+            background: #0056b3;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 300px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        .modal-content input, .modal-content select, .modal-content button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 5px;
+        }
+        .modal-content button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .modal-content button:hover {
+            background: #0056b3;
+        }
+        .close-btn {
+            background: #dc3545;
+        }
+        .close-btn:hover {
+            background: #c82333;
+        }
+        .delete-btn {
+            background: #dc3545;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .floor-number {
+            font-size: 16px;
+            font-weight: bold;
+            fill: #333;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="project-title"></h1>
+        <div>
+            <button class="add-project-btn" onclick="logout()">Dil</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="tower" id="tower"></div>
+        <div class="floor-plans" id="floor-plans"></div>
+    </div>
+
+    <div id="add-apartment-modal" class="modal">
+        <div class="modal-content">
+            <h3>Shto Apartament në Kat <span id="modal-floor"></span></h3>
+            <input type="text" id="apartment-id" placeholder="ID e Apartamentit (p.sh., 1A)" required>
+            <input type="file" id="apartment-plan" accept=".svg,.png" required>
+            <select id="apartment-status">
+                <option value="available">Në dispozicion</option>
+                <option value="sold">E shitur</option>
+            </select>
+            <input type="file" id="apartment-floor-plan-red" accept=".svg,.png" required>
+            <label for="apartment-floor-plan-red">Planimetria e katit (apartamenti i kuq)</label>
+            <input type="file" id="apartment-floor-plan-green" accept=".svg,.png" required>
+            <label for="apartment-floor-plan-green">Planimetria e katit (apartamenti jeshil)</label>
+            <button onclick="submitApartment()">Dërgo</button>
+            <button class="close-btn" onclick="closeModal()">Mbyll</button>
+        </div>
+    </div>
+
+    <div id="manage-floor-plan-modal" class="modal">
+        <div class="modal-content">
+            <h3>Menaxho Planimetrinë për Kat <span id="modal-floor-plan"></span></h3>
+            <input type="file" id="floor-plan-file" accept=".svg,.png" required>
+            <button onclick="submitFloorPlan()">Ngarko/Zëvendëso Planimetrinë</button>
+            <button class="delete-btn" onclick="deleteFloorPlan()">Fshi Planimetrinë</button>
+            <button class="close-btn" onclick="closeFloorPlanModal()">Mbyll</button>
+        </div>
+    </div>
+
+    <script>
+        const tower = document.getElementById('tower');
+        const floorPlansContainer = document.getElementById('floor-plans');
+        const modal = document.getElementById('add-apartment-modal');
+        const floorPlanModal = document.getElementById('manage-floor-plan-modal');
+        const modalFloor = document.getElementById('modal-floor');
+        const modalFloorPlan = document.getElementById('modal-floor-plan');
+        const projectTitle = document.getElementById('project-title');
+        let currentFloor;
+        let savedApartments = {};
+        let savedFloorPlans = {};
+        let projectId, buildingId;
+        let role;
+
+        window.onload = function() {
+            const token = localStorage.getItem('authToken');
+            role = localStorage.getItem('role');
+            console.log('Token nga localStorage:', token);
+            console.log('Roli nga localStorage:', role);
+            if (!token || !role) {
+                console.error('Token ose rol mungon. Ridrejtohet te login.');
+                window.location.href = 'login.html';
+                return;
+            }
+            loadBuildingDetails();
+        };
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('role');
+            window.location.href = 'login.html';
+        }
+
+        async function loadBuildingDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = urlParams.get('projectId');
+            buildingId = urlParams.get('buildingId');
+            if (!projectId || !buildingId) {
+                console.error('ID e projektit ose pallatit mungon.');
+                alert('ID e projektit ose pallatit mungon.');
+                window.location.href = 'homepage.html';
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const projectsResponse = await fetch('/projects', {
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role
+                    }
+                });
+                const projects = await projectsResponse.json();
+                const project = projects.find(p => p.id === parseInt(projectId));
+                if (!project) {
+                    console.error('Projekti nuk u gjet.');
+                    alert('Projekti nuk u gjet.');
+                    window.location.href = 'homepage.html';
+                    return;
+                }
+
+                const building = project.buildings.find(b => b.id === buildingId);
+                if (!building) {
+                    console.error('Pallati nuk u gjet.');
+                    alert('Pallati nuk u gjet.');
+                    window.location.href = `project.html?projectId=${projectId}`;
+                    return;
+                }
+
+                projectTitle.textContent = `${project.name} | Pallati: ${buildingId.replace('Pallati ', '')}`;
+                console.log('Titulli i projektit u vendos:', projectTitle.textContent);
+
+                const renderSrc = building.render || 'placeholder.jpg';
+                tower.style.backgroundImage = `url('${renderSrc}')`;
+
+                const apartmentsResponse = await fetch(`/apartments/${projectId}`, {
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role
+                    }
+                });
+                savedApartments = await apartmentsResponse.json();
+                console.log('Apartamentet e ngarkuara:', savedApartments);
+
+                const floorPlansResponse = await fetch(`/floorplans/${projectId}`, {
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role
+                    }
+                });
+                savedFloorPlans = await floorPlansResponse.json();
+                console.log('Planimetritë e ngarkuara:', savedFloorPlans);
+
+                const topFloor = building.floors;
+                const bottomFloor = 0;
+                const numberOfFloors = topFloor - bottomFloor + 1;
+                const towerHeight = 800;
+                const floorHeight = numberOfFloors > 0 ? towerHeight / numberOfFloors : towerHeight;
+
+                tower.innerHTML = '';
+                floorPlansContainer.innerHTML = '';
+
+                for (let i = topFloor; i >= bottomFloor; i--) {
+                    const floor = document.createElement('div');
+                    floor.classList.add('floor');
+                    floor.setAttribute('data-floor', i);
+                    floor.style.height = `${floorHeight}px`;
+                    floor.style.top = `${(topFloor - i) * floorHeight}px`;
+                    const floorLabel = document.createElement('span');
+                    floorLabel.classList.add('floor-label');
+                    floorLabel.textContent = `Kati ${i}`;
+                    floor.appendChild(floorLabel);
+                    tower.appendChild(floor);
+
+                    // Krijimi i container-it për apartamente dhe planimetri
+                    const floorPlanContainer = document.createElement('div');
+                    floorPlanContainer.classList.add('floor-plan-container');
+                    floorPlanContainer.setAttribute('id', `floor-container${i}`);
+
+                    // Div për apartamentet
+                    const floorPlanDiv = document.createElement('div');
+                    floorPlanDiv.setAttribute('id', `floor${i}`);
+                    floorPlanDiv.setAttribute('class', 'floor-plan');
+
+                    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    svg.setAttribute('viewBox', '0 0 600 600');
+
+                    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                    const greenFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+                    greenFilter.setAttribute('id', 'green-tint');
+                    const greenMatrix = document.createElementNS('http://www.w3.org/2000/svg', 'feColorMatrix');
+                    greenMatrix.setAttribute('type', 'matrix');
+                    greenMatrix.setAttribute('values', '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0');
+                    greenFilter.appendChild(greenMatrix);
+
+                    const redFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+                    redFilter.setAttribute('id', 'red-tint');
+                    const redMatrix = document.createElementNS('http://www.w3.org/2000/svg', 'feColorMatrix');
+                    redMatrix.setAttribute('type', 'matrix');
+                    redMatrix.setAttribute('values', '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0');
+                    redFilter.appendChild(redMatrix);
+
+                    defs.appendChild(greenFilter);
+                    defs.appendChild(redFilter);
+                    svg.appendChild(defs);
+
+                    const floorNumber = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    floorNumber.setAttribute('x', '10');
+                    floorNumber.setAttribute('y', '30');
+                    floorNumber.setAttribute('class', 'floor-number');
+                    floorNumber.textContent = `Kati ${i}`;
+                    svg.appendChild(floorNumber);
+
+                    const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                    foreignObject.setAttribute('x', '10');
+                    foreignObject.setAttribute('y', '50');
+                    foreignObject.setAttribute('width', '150');
+                    foreignObject.setAttribute('height', '30');
+
+                    const addButton = document.createElement('button');
+                    addButton.classList.add('add-apartment-btn');
+                    addButton.textContent = 'Shto Apartament';
+                    addButton.onclick = () => openModal(i);
+                    if (role === 'visitor') {
+                        addButton.classList.add('hidden');
+                    }
+                    console.log(`Butoni 'Shto Apartament' u krijua për katin ${i}`);
+                    foreignObject.appendChild(addButton);
+                    svg.appendChild(foreignObject);
+
+                    const floorPlanForeignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                    floorPlanForeignObject.setAttribute('x', '10');
+                    floorPlanForeignObject.setAttribute('y', '90');
+                    floorPlanForeignObject.setAttribute('width', '150');
+                    floorPlanForeignObject.setAttribute('height', '30');
+
+                    const addFloorPlanButton = document.createElement('button');
+                    addFloorPlanButton.classList.add('add-floor-plan-btn');
+                    addFloorPlanButton.textContent = 'Shto Planimetrinë';
+                    addFloorPlanButton.onclick = () => openFloorPlanModal(i);
+                    if (role === 'visitor') {
+                        addFloorPlanButton.classList.add('hidden');
+                    }
+                    console.log(`Butoni 'Shto Planimetrinë' u krijua për katin ${i}`);
+                    floorPlanForeignObject.appendChild(addFloorPlanButton);
+                    svg.appendChild(floorPlanForeignObject);
+
+                    if (savedApartments[buildingId] && savedApartments[buildingId][i]) {
+                        savedApartments[buildingId][i].forEach(apt => {
+                            addApartmentToSvg(svg, apt.id, apt.status, apt.plan, apt.redFloorPlan, apt.greenFloorPlan);
+                        });
+                    }
+
+                    floorPlanDiv.appendChild(svg);
+
+                    // Div për planimetrinë
+                    const floorPlanImageDiv = document.createElement('div');
+                    floorPlanImageDiv.setAttribute('id', `floor-plan-image${i}`);
+                    floorPlanImageDiv.setAttribute('class', 'floor-plan-image');
+
+                    if (savedFloorPlans[buildingId] && savedFloorPlans[buildingId][i]) {
+                        const floorPlanPath = savedFloorPlans[buildingId][i].plan;
+                        const isSvg = floorPlanPath.endsWith('.svg');
+                        if (isSvg) {
+                            const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                            svgElement.setAttribute('width', '100%');
+                            svgElement.setAttribute('height', '100%');
+                            fetch(floorPlanPath)
+                                .then(response => response.text())
+                                .then(svgContent => {
+                                    const parser = new DOMParser();
+                                    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                                    const importedSvg = svgDoc.documentElement;
+                                    svgElement.appendChild(importedSvg);
+                                    floorPlanImageDiv.appendChild(svgElement);
+                                })
+                                .catch(error => console.error('Gabim gjatë ngarkimit të SVG të planimetrisë:', error));
+                        } else {
+                            const image = document.createElement('img');
+                            image.src = floorPlanPath;
+                            floorPlanImageDiv.appendChild(image);
+                        }
+                    }
+
+                    floorPlanContainer.appendChild(floorPlanDiv);
+                    floorPlanContainer.appendChild(floorPlanImageDiv);
+                    floorPlansContainer.appendChild(floorPlanContainer);
+
+                    floor.addEventListener('click', () => {
+                        const floorNumber = floor.getAttribute('data-floor');
+                        document.querySelectorAll('.floor-plan-container').forEach(container => {
+                            container.classList.remove('active');
+                        });
+                        const selectedContainer = document.getElementById(`floor-container${floorNumber}`);
+                        if (selectedContainer) {
+                            selectedContainer.classList.add('active');
+                            // Rivendos planimetrinë e katit në atë bazë kur ndryshon kati
+                            const floorPlanImageDiv = document.getElementById(`floor-plan-image${floorNumber}`);
+                            floorPlanImageDiv.innerHTML = '';
+                            if (savedFloorPlans[buildingId] && savedFloorPlans[buildingId][floorNumber]) {
+                                const floorPlanPath = savedFloorPlans[buildingId][floorNumber].plan;
+                                const isSvg = floorPlanPath.endsWith('.svg');
+                                if (isSvg) {
+                                    const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                                    svgElement.setAttribute('width', '100%');
+                                    svgElement.setAttribute('height', '100%');
+                                    fetch(floorPlanPath)
+                                        .then(response => response.text())
+                                        .then(svgContent => {
+                                            const parser = new DOMParser();
+                                            const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                                            const importedSvg = svgDoc.documentElement;
+                                            svgElement.appendChild(importedSvg);
+                                            floorPlanImageDiv.appendChild(svgElement);
+                                        })
+                                        .catch(error => console.error('Gabim gjatë ngarkimit të SVG të planimetrisë:', error));
+                                } else {
+                                    const image = document.createElement('img');
+                                    image.src = floorPlanPath;
+                                    floorPlanImageDiv.appendChild(image);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Aktivizo katin e parë (Kati 0) si parazgjedhje
+                const defaultFloor = document.getElementById(`floor-container0`);
+                if (defaultFloor) {
+                    defaultFloor.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Gabim gjatë ngarkimit të detajeve të pallatit:', error);
+                alert('Dështoi ngarkimi i detajeve të pallatit: ' + error.message);
+            }
+        }
+
+        function openModal(floor) {
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të shtojnë apartamente.');
+                return;
+            }
+            currentFloor = floor;
+            modalFloor.textContent = floor;
+            modal.style.display = 'flex';
+            document.getElementById('apartment-id').value = '';
+            document.getElementById('apartment-plan').value = '';
+            document.getElementById('apartment-status').value = 'available';
+            document.getElementById('apartment-floor-plan-red').value = '';
+            document.getElementById('apartment-floor-plan-green').value = '';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        function openFloorPlanModal(floor) {
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të menaxhojnë planimetrinë e katit.');
+                return;
+            }
+            currentFloor = floor;
+            modalFloorPlan.textContent = floor;
+            floorPlanModal.style.display = 'flex';
+            document.getElementById('floor-plan-file').value = '';
+        }
+
+        function closeFloorPlanModal() {
+            floorPlanModal.style.display = 'none';
+        }
+
+        async function submitFloorPlan() {
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të menaxhojnë planimetrinë e katit.');
+                return;
+            }
+
+            const floorPlanFileInput = document.getElementById('floor-plan-file');
+            const floorPlanFile = floorPlanFileInput.files[0];
+            if (!floorPlanFile) {
+                alert('Ju lutem zgjidhni një skedar të vlefshëm (.svg ose .png) për planimetrinë e katit.');
+                return;
+            }
+
+            const validTypes = ['image/svg+xml', 'image/png'];
+            if (!validTypes.includes(floorPlanFile.type)) {
+                alert('Skedari duhet të jetë në format SVG ose PNG.');
+                return;
+            }
+
+            const maxSize = 10 * 1024 * 1024;
+            if (floorPlanFile.size > maxSize) {
+                alert('Skedari është shumë i madh. Ju lutem zgjidhni një skedar më të vogël se 10MB.');
+                return;
+            }
+
+            console.log('Skedari i zgjedhur për ngarkim:', {
+                name: floorPlanFile.name,
+                type: floorPlanFile.type,
+                size: floorPlanFile.size
+            });
+
+            const formData = new FormData();
+            formData.append('floor', currentFloor);
+            formData.append('buildingId', buildingId);
+            formData.append('file', floorPlanFile);
+
+            for (let [key, value] of formData.entries()) {
+                console.log(`FormData: ${key} =`, value.name || value);
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                console.log('Dërgohet kërkesa POST te /floorplans/', projectId);
+                const response = await fetch(`/floorplans/${projectId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    let errorMessage = `Gabim ${response.status}: ${response.statusText}`;
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    const floorPlanImageDiv = document.getElementById(`floor-plan-image${currentFloor}`);
+                    floorPlanImageDiv.innerHTML = '';
+
+                    const floorPlanPath = data.filePath;
+                    const isSvg = floorPlanPath.endsWith('.svg');
+                    if (isSvg) {
+                        const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svgElement.setAttribute('width', '100%');
+                        svgElement.setAttribute('height', '100%');
+                        fetch(floorPlanPath)
+                            .then(response => response.text())
+                            .then(svgContent => {
+                                const parser = new DOMParser();
+                                const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                                const importedSvg = svgDoc.documentElement;
+                                svgElement.appendChild(importedSvg);
+                                floorPlanImageDiv.appendChild(svgElement);
+                            })
+                            .catch(error => console.error('Gabim gjatë ngarkimit të SVG të planimetrisë:', error));
+                    } else {
+                        const image = document.createElement('img');
+                        image.src = floorPlanPath;
+                        floorPlanImageDiv.appendChild(image);
+                    }
+
+                    if (!savedFloorPlans[buildingId]) savedFloorPlans[buildingId] = {};
+                    savedFloorPlans[buildingId][currentFloor] = { plan: floorPlanPath };
+
+                    closeFloorPlanModal();
+                    alert('Planimetria u ngarkua/zëvendësua me sukses.');
+                } else {
+                    throw new Error(data.error || 'Gabim i panjohur gjatë ngarkimit të planimetrisë');
+                }
+            } catch (error) {
+                console.error('Gabim gjatë ngarkimit të planimetrisë:', error);
+                alert(`Dështoi ngarkimi i planimetrisë: ${error.message}`);
+            }
+        }
+
+        async function deleteFloorPlan(floorNumber = currentFloor) {
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të fshijnë planimetrinë e katit.');
+                return;
+            }
+
+            if (!confirm(`Jeni i sigurt që dëshironi të fshini planimetrinë për Katin ${floorNumber}?`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/floorplans/${projectId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ floor: floorNumber, buildingId })
+                });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    let errorMessage = `Gabim ${response.status}: ${response.statusText}`;
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    const floorPlanImageDiv = document.getElementById(`floor-plan-image${floorNumber}`);
+                    floorPlanImageDiv.innerHTML = '';
+
+                    if (savedFloorPlans[buildingId] && savedFloorPlans[buildingId][floorNumber]) {
+                        delete savedFloorPlans[buildingId][floorNumber];
+                        if (Object.keys(savedFloorPlans[buildingId]).length === 0) {
+                            delete savedFloorPlans[buildingId];
+                        }
+                    }
+
+                    closeFloorPlanModal();
+                    alert('Planimetria u fshi me sukses.');
+                } else {
+                    throw new Error(data.error || 'Gabim i panjohur gjatë fshirjes së planimetrisë');
+                }
+            } catch (error) {
+                console.error('Gabim gjatë fshirjes së planimetrisë:', error);
+                alert(`Dështoi fshirja e planimetrisë: ${error.message}`);
+            }
+        }
+
+        async function submitApartment() {
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të shtojnë apartamente.');
+                return;
+            }
+
+            const aptId = document.getElementById('apartment-id').value.trim();
+            const planFileInput = document.getElementById('apartment-plan');
+            const planFile = planFileInput.files[0];
+            const status = document.getElementById('apartment-status').value;
+            const redFloorPlanInput = document.getElementById('apartment-floor-plan-red');
+            const redFloorPlanFile = redFloorPlanInput.files[0];
+            const greenFloorPlanInput = document.getElementById('apartment-floor-plan-green');
+            const greenFloorPlanFile = greenFloorPlanInput.files[0];
+
+            if (!aptId || !planFile || !redFloorPlanFile || !greenFloorPlanFile) {
+                alert('Ju lutem plotësoni të gjitha fushat: ID, planimetria e apartamentit, planimetria e katit (e kuqe dhe jeshile).');
+                return;
+            }
+
+            const validTypes = ['image/svg+xml', 'image/png'];
+            for (const file of [planFile, redFloorPlanFile, greenFloorPlanFile]) {
+                if (!validTypes.includes(file.type)) {
+                    alert('Të gjitha skedarët duhet të jenë në format SVG ose PNG.');
+                    return;
+                }
+                const maxSize = 10 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    alert('Një nga skedarët është shumë i madh. Ju lutem zgjidhni skedarë më të vegjël se 10MB.');
+                    return;
+                }
+            }
+
+            const floorPrefix = currentFloor.toString();
+            if (!aptId.startsWith(floorPrefix) || !/[A-Z]$/.test(aptId)) {
+                alert(`ID e apartamentit duhet të fillojë me numrin e katit (${floorPrefix}) dhe të përfundojë me një shkronjë (p.sh., ${floorPrefix}A).`);
+                return;
+            }
+
+            if (savedApartments[buildingId] && savedApartments[buildingId][currentFloor] && savedApartments[buildingId][currentFloor].some(apt => apt.id === aptId)) {
+                alert('ID e apartamentit ekziston tashmë në këtë kat.');
+                return;
+            }
+
+            console.log('Skedarët e zgjedhur për ngarkim:', {
+                apartmentPlan: { name: planFile.name, type: planFile.type, size: planFile.size },
+                redFloorPlan: { name: redFloorPlanFile.name, type: redFloorPlanFile.type, size: redFloorPlanFile.size },
+                greenFloorPlan: { name: greenFloorPlanFile.name, type: greenFloorPlanFile.type, size: greenFloorPlanFile.size }
+            });
+
+            const formData = new FormData();
+            formData.append('aptId', aptId);
+            formData.append('status', status);
+            formData.append('floor', currentFloor);
+            formData.append('buildingId', buildingId);
+            formData.append('file', planFile);
+            formData.append('redFloorPlan', redFloorPlanFile);
+            formData.append('greenFloorPlan', greenFloorPlanFile);
+
+            try {
+                const token = localStorage.getItem('authToken');
+                console.log('Dërgohet kërkesa POST te /apartments/', projectId);
+                const response = await fetch(`/apartments/${projectId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    let errorMessage = `Gabim ${response.status}: ${response.statusText}`;
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    const svg = document.getElementById(`floor${currentFloor}`).querySelector('svg');
+                    addApartmentToSvg(svg, aptId, status, data.filePath, data.redFloorPlanPath, data.greenFloorPlanPath);
+
+                    if (!savedApartments[buildingId]) savedApartments[buildingId] = {};
+                    if (!savedApartments[buildingId][currentFloor]) savedApartments[buildingId][currentFloor] = [];
+                    savedApartments[buildingId][currentFloor].push({
+                        id: aptId,
+                        status: status,
+                        plan: data.filePath,
+                        redFloorPlan: data.redFloorPlanPath,
+                        greenFloorPlan: data.greenFloorPlanPath
+                    });
+
+                    closeModal();
+                    alert(`Apartamenti ${aptId} u shtua me sukses.`);
+                } else {
+                    throw new Error(data.error || 'Gabim i panjohur gjatë shtimit të apartamentit');
+                }
+            } catch (error) {
+                console.error('Gabim gjatë shtimit të apartamentit:', error);
+                alert(`Dështoi shtimi i apartamentit: ${error.message}`);
+            }
+        }
+
+        function addApartmentToSvg(svg, aptId, status, planFilePath, redFloorPlanPath, greenFloorPlanPath) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', `apartment-group ${status}`);
+            g.setAttribute('data-apartment', aptId);
+            g.setAttribute('data-status', status);
+            g.setAttribute('data-plan', planFilePath);
+            g.setAttribute('data-red-floor-plan', redFloorPlanPath || '');
+            g.setAttribute('data-green-floor-plan', greenFloorPlanPath || '');
+
+            const existingApartments = svg.querySelectorAll('.apartment-group').length;
+            const maxPerRow = 5;
+            const row = Math.floor(existingApartments / maxPerRow);
+            const col = existingApartments % maxPerRow;
+
+            const xPosition = col * 110 + 10;
+            const yPosition = row * 120 + 130;
+
+            const minHeight = (row + 1) * 120 + 130;
+            const currentViewBox = svg.getAttribute('viewBox').split(' ').map(Number);
+            if (minHeight > currentViewBox[3]) {
+                svg.setAttribute('viewBox', `0 0 600 ${minHeight}`);
+            }
+
+            const isSvg = planFilePath.endsWith('.svg');
+
+            if (isSvg) {
+                fetch(planFilePath)
+                    .then(response => response.text())
+                    .then(svgContent => {
+                        const parser = new DOMParser();
+                        const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                        const svgElement = svgDoc.documentElement;
+                        svgElement.setAttribute('width', '100');
+                        svgElement.setAttribute('height', '100');
+                        svgElement.setAttribute('x', xPosition);
+                        svgElement.setAttribute('y', yPosition);
+                        g.appendChild(svgElement);
+
+                        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        label.setAttribute('x', xPosition + 50);
+                        label.setAttribute('y', yPosition + 110);
+                        label.setAttribute('text-anchor', 'middle');
+                        label.setAttribute('font-size', '12');
+                        label.textContent = aptId;
+                        g.appendChild(label);
+                    })
+                    .catch(() => {
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', xPosition);
+                        rect.setAttribute('y', yPosition);
+                        rect.setAttribute('width', '100');
+                        rect.setAttribute('height', '100');
+                        rect.setAttribute('fill', '#ccc');
+                        g.appendChild(rect);
+
+                        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        label.setAttribute('x', xPosition + 50);
+                        label.setAttribute('y', yPosition + 110);
+                        label.setAttribute('text-anchor', 'middle');
+                        label.setAttribute('font-size', '12');
+                        label.textContent = aptId;
+                        g.appendChild(label);
+                    });
+            } else {
+                const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                image.setAttribute('href', planFilePath);
+                image.setAttribute('width', '100');
+                image.setAttribute('height', '100');
+                image.setAttribute('x', xPosition);
+                image.setAttribute('y', yPosition);
+
+                image.onerror = () => {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', xPosition);
+                    rect.setAttribute('y', yPosition);
+                    rect.setAttribute('width', '100');
+                    rect.setAttribute('height', '100');
+                    rect.setAttribute('fill', '#ccc');
+                    g.replaceChild(rect, image);
+
+                    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label.setAttribute('x', xPosition + 50);
+                    label.setAttribute('y', yPosition + 110);
+                    label.setAttribute('text-anchor', 'middle');
+                    label.setAttribute('font-size', '12');
+                    label.textContent = aptId;
+                    g.appendChild(label);
+                };
+
+                g.appendChild(image);
+
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', xPosition + 50);
+                label.setAttribute('y', yPosition + 110);
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('font-size', '12');
+                label.textContent = aptId;
+                g.appendChild(label);
+            }
+
+            svg.appendChild(g);
+
+            // Event për klikimin e majtë për të ndryshuar planimetrinë e katit
+            g.addEventListener('click', (event) => {
+                event.preventDefault();
+                const floor = aptId.match(/^\d+/)[0];
+                const status = g.getAttribute('data-status');
+                const floorPlanImageDiv = document.getElementById(`floor-plan-image${floor}`);
+                floorPlanImageDiv.innerHTML = '';
+
+                const floorPlanPath = status === 'sold' ? g.getAttribute('data-red-floor-plan') : g.getAttribute('data-green-floor-plan');
+                if (!floorPlanPath) {
+                    alert('Planimetria me ngjyrë për këtë apartament nuk është e disponueshme.');
+                    return;
+                }
+
+                const isSvg = floorPlanPath.endsWith('.svg');
+                if (isSvg) {
+                    const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    svgElement.setAttribute('width', '100%');
+                    svgElement.setAttribute('height', '100%');
+                    fetch(floorPlanPath)
+                        .then(response => response.text())
+                        .then(svgContent => {
+                            const parser = new DOMParser();
+                            const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                            const importedSvg = svgDoc.documentElement;
+                            svgElement.appendChild(importedSvg);
+                            floorPlanImageDiv.appendChild(svgElement);
+                        })
+                        .catch(error => console.error('Gabim gjatë ngarkimit të SVG të planimetrisë me ngjyrë:', error));
+                } else {
+                    const image = document.createElement('img');
+                    image.src = floorPlanPath;
+                    floorPlanImageDiv.appendChild(image);
+                }
+            });
+
+            // Event për klikimin e djathtë për menunë e veprimeve
+            g.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+                if (role !== 'editor') {
+                    alert('Vetëm Editorët mund të ndryshojnë ose fshijnë apartamente.');
+                    return;
+                }
+                const aptId = g.getAttribute('data-apartment');
+                const action = prompt(`Çfarë dëshironi të bëni me Apartamentin ${aptId}?\n1. Ndrysho Statusin (në dispozicion/e shitur)\n2. Fshi Apartamentin\nFutni 1 ose 2:`);
+                if (action === '1') {
+                    changeApartmentStatus(g);
+                } else if (action === '2') {
+                    deleteApartment(g);
+                }
+            });
+
+            // Event për touch për menunë e veprimeve
+            let touchTimer;
+            g.addEventListener('touchstart', (event) => {
+                touchTimer = setTimeout(() => {
+                    if (role !== 'editor') {
+                        alert('Vetëm Editorët mund të ndryshojnë ose fshijnë apartamente.');
+                        return;
+                    }
+                    const aptId = g.getAttribute('data-apartment');
+                    const action = prompt(`Çfarë dëshironi të bëni me Apartamentin ${aptId}?\n1. Ndrysho Statusin (në dispozicion/e shitur)\n2. Fshi Apartamentin\nFutni 1 ose 2:`);
+                    if (action === '1') {
+                        changeApartmentStatus(g);
+                    } else if (action === '2') {
+                        deleteApartment(g);
+                    }
+                }, 800);
+            });
+            g.addEventListener('touchend', () => clearTimeout(touchTimer));
+            g.addEventListener('touchmove', () => clearTimeout(touchTimer));
+        }
+
+        async function changeApartmentStatus(apartmentGroup) {
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të ndryshojnë statusin e apartamenteve.');
+                return;
+            }
+
+            const aptId = apartmentGroup.getAttribute('data-apartment');
+            const currentStatus = apartmentGroup.getAttribute('data-status');
+            const newStatus = currentStatus === 'available' ? 'sold' : 'available';
+            const floor = aptId.match(/^\d+/)[0];
+
+            apartmentGroup.classList.remove('available', 'sold');
+            apartmentGroup.classList.add(newStatus);
+            apartmentGroup.setAttribute('data-status', newStatus);
+
+            const apt = savedApartments[buildingId][floor].find(a => a.id === aptId);
+            if (apt) {
+                apt.status = newStatus;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/apartments/${projectId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(savedApartments)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Dështoi përditësimi i statusit të apartamentit');
+                }
+
+                // Përditëso planimetrinë e katit nëse apartamenti është i klikuar
+                const floorPlanImageDiv = document.getElementById(`floor-plan-image${floor}`);
+                if (floorPlanImageDiv.innerHTML.includes(aptId)) {
+                    floorPlanImageDiv.innerHTML = '';
+                    const floorPlanPath = newStatus === 'sold' ? apartmentGroup.getAttribute('data-red-floor-plan') : apartmentGroup.getAttribute('data-green-floor-plan');
+                    if (floorPlanPath) {
+                        const isSvg = floorPlanPath.endsWith('.svg');
+                        if (isSvg) {
+                            const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                            svgElement.setAttribute('width', '100%');
+                            svgElement.setAttribute('height', '100%');
+                            fetch(floorPlanPath)
+                                .then(response => response.text())
+                                .then(svgContent => {
+                                    const parser = new DOMParser();
+                                    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                                    const importedSvg = svgDoc.documentElement;
+                                    svgElement.appendChild(importedSvg);
+                                    floorPlanImageDiv.appendChild(svgElement);
+                                })
+                                .catch(error => console.error('Gabim gjatë ngarkimit të SVG të planimetrisë me ngjyrë:', error));
+                        } else {
+                            const image = document.createElement('img');
+                            image.src = floorPlanPath;
+                            floorPlanImageDiv.appendChild(image);
+                        }
+                    }
+                }
+
+                alert(`Statusi i Apartamentit ${aptId} u ndryshua në ${newStatus === 'available' ? 'Në dispozicion' : 'E shitur'}.`);
+            } catch (error) {
+                console.error('Gabim gjatë përditësimit të statusit:', error);
+                alert(`Dështoi përditësimi i statusit: ${error.message}`);
+            }
+        }
+
+        async function deleteApartment(apartmentGroup) {
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të fshijnë apartamente.');
+                return;
+            }
+
+            const aptId = apartmentGroup.getAttribute('data-apartment');
+            const floor = aptId.match(/^\d+/)[0];
+            const filePath = apartmentGroup.getAttribute('data-plan');
+            const redFloorPlanPath = apartmentGroup.getAttribute('data-red-floor-plan');
+            const greenFloorPlanPath = apartmentGroup.getAttribute('data-green-floor-plan');
+
+            if (!confirm(`Jeni i sigurt që dëshironi të fshini Apartamentin ${aptId}?`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/apartments/${projectId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': token,
+                        'X-User-Role': role,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ aptId, floor, filePath, redFloorPlanPath, greenFloorPlanPath, buildingId })
+                });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    let errorMessage = `Gabim ${response.status}: ${response.statusText}`;
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    apartmentGroup.remove();
+                    if (savedApartments[buildingId] && savedApartments[buildingId][floor]) {
+                        savedApartments[buildingId][floor] = savedApartments[buildingId][floor].filter(apt => apt.id !== aptId);
+                        if (savedApartments[buildingId][floor].length === 0) {
+                            delete savedApartments[buildingId][floor];
+                        }
+                        if (Object.keys(savedApartments[buildingId]).length === 0) {
+                            delete savedApartments[buildingId];
+                        }
+                    }
+                    // Rivendos planimetrinë e katit në atë bazë pas fshirjes
+                    const floorPlanImageDiv = document.getElementById(`floor-plan-image${floor}`);
+                    floorPlanImageDiv.innerHTML = '';
+                    if (savedFloorPlans[buildingId] && savedFloorPlans[buildingId][floor]) {
+                        const floorPlanPath = savedFloorPlans[buildingId][floor].plan;
+                        const isSvg = floorPlanPath.endsWith('.svg');
+                        if (isSvg) {
+                            const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                            svgElement.setAttribute('width', '100%');
+                            svgElement.setAttribute('height', '100%');
+                            fetch(floorPlanPath)
+                                .then(response => response.text())
+                                .then(svgContent => {
+                                    const parser = new DOMParser();
+                                    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+                                    const importedSvg = svgDoc.documentElement;
+                                    svgElement.appendChild(importedSvg);
+                                    floorPlanImageDiv.appendChild(svgElement);
+                                })
+                                .catch(error => console.error('Gabim gjatë ngarkimit të SVG të planimetrisë:', error));
+                        } else {
+                            const image = document.createElement('img');
+                            image.src = floorPlanPath;
+                            floorPlanImageDiv.appendChild(image);
+                        }
+                    }
+                    alert(`Apartamenti ${aptId} u fshi me sukses.`);
+                } else {
+                    throw new Error(data.error || 'Gabim i panjohur gjatë fshirjes së apartamentit');
+                }
+            } catch (error) {
+                console.error('Gabim gjatë fshirjes së apartamentit:', error);
+                alert(`Dështoi fshirja e apartamentit: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

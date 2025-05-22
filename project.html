@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .add-project-btn, .add-building-btn {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        .add-project-btn:hover, .add-building-btn:hover {
+            background: #0056b3;
+        }
+        .buildings-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .building-card {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex; /* Shto flexbox për të kontrolluar pozicionimin */
+            flex-direction: column; /* Rendi elementët vertikalisht */
+            justify-content: space-between; /* Shtyn tekstin në fund */
+            min-height: 300px; /* Shto një lartësi minimale për uniformitet */
+        }
+        .building-card:hover {
+            transform: scale(1.05);
+        }
+        .building-card img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            padding: 10px;
+            box-sizing: border-box;
+            flex-grow: 1; /* Lejo imazhin të marrë hapësirën e nevojshme */
+        }
+        .building-card .text-container {
+            padding: 10px;
+            text-align: center;
+        }
+        .building-card h3 {
+            margin: 0 0 5px 0; /* Redukto margin për estetikë */
+            font-size: 16px;
+        }
+        .building-card p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        .modal-content input, .modal-content button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .modal-content button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .modal-content button:hover {
+            background: #0056b3;
+        }
+        .modal-content .close-btn {
+            background: #dc3545;
+        }
+        .modal-content .close-btn:hover {
+            background: #c82333;
+        }
+        .hidden {
+            display: none;
+        }
+        @media (max-width: 600px) {
+            .building-card img {
+                padding: 5px;
+            }
+            .buildings-container {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="project-name"></h1>
+        <div>
+            <button id="add-building-btn" class="add-building-btn" onclick="openAddBuildingModal()">Shto Pallat</button>
+            <button class="add-project-btn" onclick="logout()">Dil</button>
+        </div>
+    </div>
+
+    <div class="buildings-container" id="buildings-container"></div>
+
+    <!-- Modal për ndryshimin e numrit të kateve -->
+    <div id="change-floors-modal" class="modal">
+        <div class="modal-content">
+            <h2>Change Number of Floors for <span id="building-name-floors"></span></h2>
+            <input type="number" id="new-floors" placeholder="New number of floors" min="0" required>
+            <button onclick="submitFloorsChange()">Submit</button>
+            <button class="close-btn" onclick="closeFloorsModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- Modal për ngarkimin e render-it -->
+    <div id="upload-render-modal" class="modal">
+        <div class="modal-content">
+            <h2>Upload Render for <span id="building-name-render"></span></h2>
+            <input type="file" id="building-render" accept=".jpg,.png,.svg" required>
+            <button onclick="submitRenderUpload()">Submit</button>
+            <button class="close-btn" onclick="closeRenderModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- Modal për shtimin e pallatit -->
+    <div id="add-building-modal" class="modal">
+        <div class="modal-content">
+            <h2>Shto Pallat të Ri</h2>
+            <input type="text" id="new-building-id" placeholder="Emri i Pallatit (p.sh., Pallati 31)" required>
+            <input type="number" id="new-building-floors" placeholder="Numri i Kateve" min="0" required>
+            <input type="file" id="new-building-render" accept=".jpg,.png,.svg" required>
+            <button onclick="submitNewBuilding()">Submit</button>
+            <button class="close-btn" onclick="closeAddBuildingModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const projectNameElement = document.getElementById('project-name');
+        const buildingsContainer = document.getElementById('buildings-container');
+        const floorsModal = document.getElementById('change-floors-modal');
+        const renderModal = document.getElementById('upload-render-modal');
+        const addBuildingModal = document.getElementById('add-building-modal');
+        const addBuildingBtn = document.getElementById('add-building-btn');
+        const buildingNameFloors = document.getElementById('building-name-floors');
+        const buildingNameRender = document.getElementById('building-name-render');
+        let currentProjectId, currentBuildingId;
+
+        window.onload = function() {
+            const token = localStorage.getItem('authToken');
+            const role = localStorage.getItem('role');
+
+            if (!token || !role) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (role === 'visitor') {
+                addBuildingBtn.classList.add('hidden');
+            }
+
+            loadProjectDetails();
+        };
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('role');
+            window.location.href = 'login.html';
+        }
+
+        async function loadProjectDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectId = urlParams.get('projectId');
+            if (!projectId) {
+                alert('Project ID not provided.');
+                window.location.href = 'homepage.html';
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/projects', {
+                    headers: { 'Authorization': token }
+                });
+                const projects = await response.json();
+                const project = projects.find(p => p.id === parseInt(projectId));
+                if (!project) {
+                    alert('Project not found.');
+                    window.location.href = 'homepage.html';
+                    return;
+                }
+
+                projectNameElement.textContent = project.name;
+                buildingsContainer.innerHTML = '';
+
+                project.buildings.forEach(building => {
+                    const card = document.createElement('div');
+                    card.classList.add('building-card');
+                    const renderSrc = building.render || 'placeholder.jpg';
+                    card.innerHTML = `
+                        <img src="${renderSrc}" alt="${building.id}" onerror="this.src='placeholder.jpg'">
+                        <div class="text-container">
+                            <h3>${building.id}</h3>
+                            <p>Floors: ${building.floors}</p>
+                        </div>
+                    `;
+                    card.onclick = () => {
+                        window.location.href = `building.html?projectId=${project.id}&buildingId=${building.id}`;
+                    };
+                    card.addEventListener('contextmenu', (event) => {
+                        event.preventDefault();
+                        const role = localStorage.getItem('role');
+                        if (role !== 'editor') {
+                            alert('Vetëm Editorët mund të ndryshojnë ose fshijnë pallate.');
+                            return;
+                        }
+                        const action = prompt(`What would you like to do with ${building.id}?\n1. Change Number of Floors\n2. Delete Building\n3. Upload Render\nEnter 1, 2, or 3:`);
+                        if (action === '1') {
+                            changeNumberOfFloors(project.id, building.id, building.floors);
+                        } else if (action === '2') {
+                            deleteBuilding(project.id, building.id);
+                        } else if (action === '3') {
+                            uploadRender(project.id, building.id);
+                        }
+                    });
+                    buildingsContainer.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading project details:', error);
+                alert('Failed to load project details: ' + error.message);
+            }
+        }
+
+        function changeNumberOfFloors(projectId, buildingId, currentFloors) {
+            currentProjectId = projectId;
+            currentBuildingId = buildingId;
+            buildingNameFloors.textContent = buildingId;
+            document.getElementById('new-floors').value = currentFloors;
+            floorsModal.style.display = 'flex';
+        }
+
+        async function submitFloorsChange() {
+            const role = localStorage.getItem('role');
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të ndryshojnë numrin e kateve.');
+                return;
+            }
+
+            const newFloors = document.getElementById('new-floors').value;
+            if (isNaN(newFloors) || newFloors < 0) {
+                alert('Please enter a valid number of floors.');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/projects', {
+                    headers: { 'Authorization': token }
+                });
+                const projects = await response.json();
+                const project = projects.find(p => p.id === parseInt(currentProjectId));
+                if (!project) {
+                    alert('Project not found.');
+                    return;
+                }
+
+                const building = project.buildings.find(b => b.id === currentBuildingId);
+                if (!building) {
+                    alert('Building not found.');
+                    return;
+                }
+
+                building.floors = parseInt(newFloors);
+                await fetch(`/projects/${currentProjectId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(project)
+                });
+
+                closeFloorsModal();
+                loadProjectDetails();
+            } catch (error) {
+                console.error('Error updating number of floors:', error);
+                alert('Error updating number of floors: ' + error.message);
+            }
+        }
+
+        function closeFloorsModal() {
+            floorsModal.style.display = 'none';
+        }
+
+        function uploadRender(projectId, buildingId) {
+            currentProjectId = projectId;
+            currentBuildingId = buildingId;
+            buildingNameRender.textContent = buildingId;
+            document.getElementById('building-render').value = '';
+            renderModal.style.display = 'flex';
+        }
+
+        async function submitRenderUpload() {
+            const role = localStorage.getItem('role');
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të ngarkojnë render.');
+                return;
+            }
+
+            const renderFile = document.getElementById('building-render').files[0];
+            if (!renderFile) {
+                alert('Please select a render file to upload.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('buildingId', currentBuildingId);
+            formData.append('render', renderFile);
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/projects/${currentProjectId}/render`, {
+                    method: 'POST',
+                    headers: { 'Authorization': token },
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    closeRenderModal();
+                    loadProjectDetails();
+                } else {
+                    alert('Failed to upload render: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error uploading render:', error);
+                alert('Error uploading render: ' + error.message);
+            }
+        }
+
+        function closeRenderModal() {
+            renderModal.style.display = 'none';
+        }
+
+        function openAddBuildingModal() {
+            const role = localStorage.getItem('role');
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të shtojnë pallate.');
+                return;
+            }
+            document.getElementById('new-building-id').value = '';
+            document.getElementById('new-building-floors').value = '';
+            document.getElementById('new-building-render').value = '';
+            addBuildingModal.style.display = 'flex';
+        }
+
+        function closeAddBuildingModal() {
+            addBuildingModal.style.display = 'none';
+        }
+
+        async function submitNewBuilding() {
+            const role = localStorage.getItem('role');
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të shtojnë pallate.');
+                return;
+            }
+
+            const buildingId = document.getElementById('new-building-id').value.trim();
+            const floors = parseInt(document.getElementById('new-building-floors').value);
+            const renderFile = document.getElementById('new-building-render').files[0];
+
+            if (!buildingId || isNaN(floors) || floors < 0 || !renderFile) {
+                alert('Ju lutem plotësoni të gjitha fushat dhe sigurohuni që numri i kateve është i vlefshëm.');
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectId = urlParams.get('projectId');
+            if (!projectId) {
+                alert('Project ID not provided.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('buildingId', buildingId);
+            formData.append('floors', floors);
+            formData.append('render', renderFile);
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/projects/${projectId}/building`, {
+                    method: 'POST',
+                    headers: { 'Authorization': token },
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    closeAddBuildingModal();
+                    loadProjectDetails();
+                } else {
+                    alert('Failed to add building: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error adding building:', error);
+                alert('Error adding building: ' + error.message);
+            }
+        }
+
+        async function deleteBuilding(projectId, buildingId) {
+            const role = localStorage.getItem('role');
+            if (role !== 'editor') {
+                alert('Vetëm Editorët mund të fshijnë pallate.');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete ${buildingId}?`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/projects/${projectId}/building/${buildingId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': token }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    loadProjectDetails();
+                } else {
+                    alert('Failed to delete building: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting building:', error);
+                alert('Error deleting building: ' + error.message);
+            }
+        }
+
+        loadProjectDetails();
+    </script>
+</body>
+</html>

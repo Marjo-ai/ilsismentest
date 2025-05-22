@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Ilad Sistem Menaxhimi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        .login-container {
+            background: white;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            width: 300px;
+            text-align: center;
+        }
+        .login-container h2 {
+            margin-bottom: 20px;
+        }
+        .login-container input, .login-container button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .login-container button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .login-container button:hover {
+            background: #0056b3;
+        }
+        .visitor-btn {
+            background: #28a745;
+        }
+        .visitor-btn:hover {
+            background: #218838;
+        }
+        .editor-form {
+            display: none;
+            margin-top: 20px;
+        }
+        .editor-form.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Ilad Shpk</h2>
+        <h2>Sistem Menaxhimi</h2>
+        <button class="visitor-btn" onclick="loginAsVisitor()">Hyr si Vizitor</button>
+        <button onclick="toggleEditorForm()">Hyr si Anetar i Ekipit</button>
+        <div id="editor-form" class="editor-form">
+            <input type="text" id="username" placeholder="Emri i Përdoruesit (p.sh., Ilir Shameti, Eduard Duka, Marjo Naci)">
+            <input type="password" id="password" placeholder="Fjalëkalimi">
+            <button onclick="loginAsEditor()">Hyr</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleEditorForm() {
+            const editorForm = document.getElementById('editor-form');
+            editorForm.classList.toggle('active');
+        }
+
+        async function loginAsEditor() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                alert('Ju lutem vendosni emrin e përdoruesit dhe fjalëkalimin për të hyrë si Editor.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: 'editor', username, password })
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Response: ${text}`);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('role', 'editor');
+                    window.location.href = 'homepage.html';
+                } else {
+                    alert('Hyrja dështoi: ' + (data.error || 'Gabim i panjohur'));
+                }
+            } catch (error) {
+                console.error('Error during login:', error);
+                alert('Gabim gjatë hyrjes: ' + error.message);
+            }
+        }
+
+        async function loginAsVisitor() {
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: 'visitor' })
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Response: ${text}`);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('role', 'visitor');
+                    window.location.href = 'homepage.html';
+                } else {
+                    alert('Hyrja dështoi: ' + (data.error || 'Gabim i panjohur'));
+                }
+            } catch (error) {
+                console.error('Error during login:', error);
+                alert('Gabim gjatë hyrjes: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
